@@ -21,6 +21,9 @@ imageElon1 = cv2.cvtColor(imageElon1, cv2.COLOR_BGR2RGB)
 imageElon2 = face_recognition.load_image_file('ImagesBasic/elonmusk2.jpg')
 imageElon2 = cv2.cvtColor(imageElon2, cv2.COLOR_BGR2RGB)
 
+imageBill1 = face_recognition.load_image_file('ImagesBasic/billgates1.jpg')
+imageBill1 = cv2.cvtColor(imageBill1, cv2.COLOR_BGR2RGB)
+
 
 
 # Step 2: find all faces in an image and their encoded features
@@ -57,14 +60,77 @@ cv2.rectangle(imageElon2,
               (0, 67, 23),
               2)
 
+faceLocation3 = face_recognition.face_locations(imageBill1)[0]
+encodeBill1 = face_recognition.face_encodings(imageBill1)[0]
+cv2.rectangle(imageBill1,
+              (faceLocation2[3], faceLocation2[0]),
+              (faceLocation2[1], faceLocation2[2]),
+              (0, 67, 23),
+              2)
+
 
 
 # Step 3: comparing these faces, find the "distance" between them with their encoded features
+# Back-End used is Linear SVM to evaluate if they match or not
+
+# compare_faces() is a function which returns an array of boolean
+# this function takes 2 parameters:
+# - array of training images: images that represents the same person
+# - testing image: image which should be evaluated if it represents the same person in the array or not
+# each boolean in the return array says
+# if an image in the training set represents the same person of testing image, it is:
+# - true: if a specific image in the training set matches with the testing image
+# - false: if a specific image in the training set doesn't match with the testing image
+resultsComparison = face_recognition.compare_faces([encodeElon], encodeElon2)
+print(resultsComparison)
+
+resultsComparisonFalse = face_recognition.compare_faces([encodeElon], encodeBill1)
+print(resultsComparisonFalse)
+
+# face_distance() is a function which gives a measure of how many distance there is
+# between images in the training data set and the testing image
+# useful because there are cases where 2 persons can be really similar
+# we need it to find which person has the best match
+# this function takes 2 parameters:
+# - array of training images: images that represents the same person
+# - testing image: image which should be evaluated if it represents the same person in the array or not
+# each value in the return numpy array says
+# how much an image in the training set represents the same person of testing image
+faceDistance = face_recognition.face_distance([encodeElon], encodeElon2)
+print(faceDistance)
+
+# putText() is a function which put a text inside a specified image
+# it takes parameters:
+# - image: on which we want to put text
+# - text: that we want to be drawn
+# - position: bottom-left corner of text position in the photo
+# - font: used for text
+# - scale: value multiplied to the text size
+# - thickness: of the font
+cv2.putText(imageElon2,
+            f'{resultsComparison} {round(faceDistance[0], 2)}',
+            (50, 50),
+            cv2.FONT_HERSHEY_COMPLEX,
+            1,
+            (0, 67, 23),
+            2)
+
+faceDistance2 = face_recognition.face_distance([encodeElon], encodeBill1)
+print(faceDistance2)
+
+cv2.putText(imageElon2,
+            f'{resultsComparisonFalse} {round(faceDistance2[0], 2)}',
+            (50, 150),
+            cv2.FONT_HERSHEY_COMPLEX,
+            1,
+            (0, 67, 23),
+            2)
 
 
 
 # OpenCV shows defined images in a window
 cv2.imshow("Elon Musk", imageElon1)
+# cv2.imshow("Bill Gates", imageBill1)
 cv2.imshow("Elon Musk Test", imageElon2)
 cv2.waitKey(0)
 
