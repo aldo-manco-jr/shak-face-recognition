@@ -8,6 +8,7 @@ import cv2
 import face_recognition
 
 
+
 # Step 1: loading images, convert them to RGB
 
 # give to face_recognition algorithm a resource image
