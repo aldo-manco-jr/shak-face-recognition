@@ -63,8 +63,8 @@ cv2.rectangle(imageElon2,
 faceLocation3 = face_recognition.face_locations(imageBill1)[0]
 encodeBill1 = face_recognition.face_encodings(imageBill1)[0]
 cv2.rectangle(imageBill1,
-              (faceLocation2[3], faceLocation2[0]),
-              (faceLocation2[1], faceLocation2[2]),
+              (faceLocation3[3], faceLocation3[0]),
+              (faceLocation3[1], faceLocation3[2]),
               (0, 67, 23),
               2)
 
@@ -130,7 +130,7 @@ cv2.putText(imageElon2,
 
 # OpenCV shows defined images in a window
 cv2.imshow("Elon Musk", imageElon1)
-# cv2.imshow("Bill Gates", imageBill1)
+cv2.imshow("Bill Gates", imageBill1)
 cv2.imshow("Elon Musk Test", imageElon2)
 cv2.waitKey(0)
 
