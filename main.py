@@ -12,16 +12,16 @@ import face_recognition
 # Step 1: loading images, convert them to RGB
 
 # give to face_recognition algorithm a resource image
-imageElon1 = face_recognition.load_image_file('ImagesBasic/elonmusk1.jpg')
+imageElon1 = face_recognition.load_image_file('images-basic/elonmusk1.jpg')
 
 # face_recognition load images in BGR standard
 # OpenCV convert it to RGB
 imageElon1 = cv2.cvtColor(imageElon1, cv2.COLOR_BGR2RGB)
 
-imageElon2 = face_recognition.load_image_file('ImagesBasic/elonmusk2.jpg')
+imageElon2 = face_recognition.load_image_file('images-basic/elonmusk2.jpg')
 imageElon2 = cv2.cvtColor(imageElon2, cv2.COLOR_BGR2RGB)
 
-imageBill1 = face_recognition.load_image_file('ImagesBasic/billgates1.jpg')
+imageBill1 = face_recognition.load_image_file('images-basic/billgates1.jpg')
 imageBill1 = cv2.cvtColor(imageBill1, cv2.COLOR_BGR2RGB)
 
 
