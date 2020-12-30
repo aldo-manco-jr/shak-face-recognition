@@ -5,54 +5,113 @@ import os
 from datetime import datetime
 
 
-# path into the workspace where the list of image files are
-pathImagesList = 'images-attendance'
+"""
+il percorso all'interno del workspace dove poter trovare delle cartelle
+dove ogni cartella rappresenta una persona
+ogni cartella contiene una lista di foto della persona che rappresenta
+"""
 
-# initialize the list of images where the images will be appended by OpenCV
+PATH_PEOPLE_FOLDERS_LIST = 'images-attendance'
+
+
+"""
+inizializzazione dell'array che conterrà la lista di tutte le immagini
+presenti all'interno della cartella dedicata alle foto (images-attendance)
+foto da cui l'algoritmo estrae le features appartenenti a tutte le foto di quella persona
+"""
+
 imagesList = []
 
-# initialize the list of labels linked to each image
-# which describes which person is represented
-# it is the filename of each image without the extension (example '.jpg')
-# label example: 'aldomanco'
+
+"""
+inizializza l'elenco delle etichette collegate a ciascuna foto
+ogni etichetta è il nome della persona raffigurata nella foto
+ad essa viene assegnato il nome della cartella a cui viene dato il nome della persona 
+esempio di etichetta: "Aldo Manco"
+"""
+
 namesFacesList = []
 
-# put the list of filenames of each image inside a list
-# this operation can be done by the operative system library
-# in the folder with path defined in 'pathImagesList'
-# example: 'aldomanco.jpg'
-filenameImagesList = os.listdir(pathImagesList)
-filenameImagesList.pop()
 
-print(filenameImagesList)
+"""
+lista contenente i nomi delle cartelle all'interno della cartella dedicata alle foto (images-attendance)
+dove ogni cartella rappresenta una persona
+ogni nome di una cartella è il nome della persona
+ogni cartella contiene tutte le foto relative a quella persona
+"""
 
-# for each filename defined in the list
-# we append each image labeled by filename in the path
-# we append each label which is represented by
-# filename without the extension of the file
-for filenameImage in filenameImagesList:
-    currentImage = cv2.imread(f'{pathImagesList}/{filenameImage}')
-    imagesList.append(currentImage)
-    namesFacesList.append(os.path.splitext(filenameImage)[0])
+peopleFoldersList = os.listdir(PATH_PEOPLE_FOLDERS_LIST)
+peopleFoldersList.pop()
 
 
-# function which will compute all the encodings
-# for each image in the images list passed as paramters
+"""
+per ogni cartella che rappresenta una persona all'interno di images-attendance
+creiamo un array contenente la lista di tutti filename delle foto all'interno di quella cartella
+che raffigurano la persona rappresentata dalla cartella
+
+per ogni filename all'interno di questo array
+inseriamo il filename dell'immagine all'interno di un array definito in precedenza senza l'estensione (.jpg)
+che conterrà tutte le immagini di tutte le persone
+di cui l'algoritmo deve fare una mappatura delle features
+"""
+
+for personFolder in peopleFoldersList:
+    pathPersonPhotoFilenameList = PATH_PEOPLE_FOLDERS_LIST + "/" + personFolder
+    personPhotoFilenameList = os.listdir(pathPersonPhotoFilenameList)
+
+    for personPhotoFilename in personPhotoFilenameList:
+        currentImage = cv2.imread(f'{pathPersonPhotoFilenameList}/{personPhotoFilename}')
+        print(pathPersonPhotoFilenameList + "/" +personPhotoFilename)
+        imagesList.append(currentImage)
+        namesFacesList.append(os.path.splitext(personFolder))
+
+
+"""
+funzione che calcola le features di ogni faccia presente all'interno di foto
+per ogni foto presente all'interno di una lista di foto
+
+facesListEncodingsList[]
+- matrice MxN
+    M -> numero delle foto
+    N -> numero delle features per ogni faccia (128)
+- contiene la lista delle features per ogni faccia
+
+ogni foto all'interno della lista di tutte le foto del data set
+- viene convertita da BGR a RGB
+- vengono calcolate le features per ogni faccia all'interno dell'immagine
+- vengono aggiunte le features di ogni faccia all'interno di un array che viene restituito 
+"""
+
 def findFacesEncodings(imagesList):
 
-    # list containing all the list of encodings
-    # for each image in the images list
     facesListEncodingsList = []
 
-    # for each image in the image list
-    # convert every BGR image in RGB
-    # extract the list of features (encoding) from each image
-    # save this list of features
     for image in imagesList:
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         faceEncodingsList = face_recognition.face_encodings(image)[0]
         facesListEncodingsList.append(faceEncodingsList)
     return facesListEncodingsList
+
+
+"""
+funzione che segna:
+- nome della persona
+- data del rilevamento
+la prima volta che quella persona viene rilevata davanti la webcam in un file excel
+
+File CSV (.csv), file strutturato dove:
+- le colonne sono separate da virgole sulla stessa riga
+- le righe sono separate andando a capo  
+
+passaggi:
+- apre il file CSV (ledgerAttendance.csv)
+- legge il contenuto del file CSV
+- salva tutti i nomi registrati nel file CSV in un array
+- in ogni frame registrato dalla webcam
+    ogni persona non presente nell'array che viene identificata
+    viene registrata come un nuovo record nel file CSV
+    dove viene assegnata la data e l'ora attuali oltre al nome
+"""
 
 def markPersonAttendance(namePersonFound):
     with open('ledgerAttendance.csv', 'r+') as file:
@@ -67,98 +126,116 @@ def markPersonAttendance(namePersonFound):
             datetimeString = now.strftime('%d/%m/%g %H:%M:%S')
             file.writelines(f'\n{namePersonFound},{datetimeString}')
 
-# give a reference to results of previous function
+
+"""
+tramite la funzione findFacesEncodings() definita in precedenza
+otteniamo facesListEncodingsList[]
+- matrice MxN
+    M -> numero delle foto
+    N -> numero delle features per ogni faccia (128)
+- contiene la lista delle features per ogni faccia rilevata nelle foto del data set
+"""
+
 facesListEncodingsList = findFacesEncodings(imagesList)
 print('Encoding Complete')
 
-# initialize webcam with OpenCV with ID=0
+
+"""
+OpenCV inizializza la webcam con ID=0
+"""
+
 webcam = cv2.VideoCapture(0)
 
-# getting frame from webcam continuously
+
+#per ogni frame catturato dalla webcam finché il programma è aperto
 while True:
 
-    # get full size image from webcam
-    # get message which warn if operation has been successful or not
+    # ricaviamo l'immagine originale senza compressione dalla webcam
+    # riceviamo un messaggio che avverte se l'operazione è andata a buon fine o meno
     success, image = webcam.read()
 
-    # compression of image of 1/4 of the original scale
-    # second and third parameters indicates that
-    # we don't want to specify a constrainted resolution
-    # but we want to work on scaling keeping the same proportion
+    # compressione dell'immagine di 1/4 rispetto alla scala originale
+    # secondo e terzo parametro indicano che non vogliamo specificare una risoluzione forzata a cui l'immagine si deve adattare
+    # ma vogliamo lavorare sul ridimensionamento mantenendo la stessa proporzione
     compressedImage = cv2.resize(image, (0, 0), None, 0.25, 0.25)
 
-    # convert frame taken from webcam from BGR to RGB
+    # converte l'immagine compressa del frame catturato dalla webcam da BGR a RGB
     compressedImage = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # get list of coordinates of each face in the frame
+    # ricaviamo la lista delle coordinate per ciascuna faccia rilevata
+    # dall'algoritmo di Face Detection Landmarks nel frame catturato dalla webcam
     frameFaceLocationsList = face_recognition.face_locations(image)
 
-    # get list of encodings of each face
-    # present in each coordinates found previously
-    # in the frame
+    # ricaviamo la lista delle 128 features per ogni faccia
+    # presente in ciascuna delle coordinate trovate in precedenza nel frame catturato dalla webcam
     frameFaceEncodingsList = face_recognition.face_encodings(image, frameFaceLocationsList)
 
-    # zip() function joins 0 or more iterables element (array, lists, set,...)
-    # creating a unique list which elements are tuples
-    # containing the fields of each iterable at a specific index
-    # here we are creating an iterable which contains for each face in the frame
-    # a tuple composed in this way:
-    # - coordinates of location where face is represented in the image
-    # - list of encodings which represents unique features of that particular image
+    # funzione zip() unisce 0 o più elementi iterabili (array, liste, set, ...)
+    # creando un'unica lista in cui gli elementi sono tuple
+    # ogni tupla contiene i campi di ogni elemento iterabile ad un indice specifico
+    # qui stiamo creando un iterabile che contiene per ogni faccia nel frame catturato dalla webcam
+    # una tupla con questa struttura:
+    # - coordinate della posizione in cui la faccia è presente nel frame
+    # - lista di features che rappresentano delle caratteristiche che prese insieme rendono univoca quella particolare faccia
     frameFacesLocationsEncodings = zip(frameFaceEncodingsList, frameFaceLocationsList)
 
-    # for each tuple of location and encodings of each face in the frame
+    # per ogni tupla contenente:
+    # - posizione
+    # - features
+    # di ogni faccia nel frame
     for currentFrameFaceEncodings, currentFrameFaceLocation in frameFacesLocationsEncodings:
 
-        # compare the current face with all the known faces in our folder
-        # obtaining an array of boolean which indicates that
+        # confronta la faccia del frame con tutte le facce conosciute presenti all'interno del data set
+        # restituisce un array di valori boolean
+        # che indicano se c'è corrispondenza per ognuna delle 128 features calcolate dall'algoritmo
         facesMatches = face_recognition.compare_faces(facesListEncodingsList, currentFrameFaceEncodings)
 
-        # calculate the distance between the current face with all the known faces in our folder
-        # obtaining an array which tells us the distance between them
-        # through a rational number in [0, 1]
-        # smaller is the number, bigger is the compatibility
+        # calcola la distanza tra la faccia del frame con tutte le facce conosciute presenti all'interno del data set
+        # restituisce un array di numeri razionali in [0, 1]
+        # che indicano la distanza per ognuna delle 128 features calcolate dall'algoritmo
+        # minore è il numero, maggiore è la compatibilità
         facesDistances = face_recognition.face_distance(facesListEncodingsList, currentFrameFaceEncodings)
 
-        # print results of comparison and relative distances
+        # stampa i risultati del confronto e la relativa distanza
         print(facesMatches)
         print(f"{facesDistances}\n")
 
-        # find minimum value in the list of distances
-        # it represents the most similar image in the known faces list
-        # thanks to numpy library which works with numbers and lists
+        # trova il valore minimo nella lista delle distanze
+        # la faccia con quella distanza dalla faccia del frame
+        # rappresenta la faccia più simile nella lista dei volti noti
         bestMatchIndex = np.argmin(facesDistances)
 
-        # if the face with the minumum distance hence the most similar
-        # is marked by face_recognition library as the same person
+        # se le 2 facce vengono interpretate dalla libreria face_recognition come stessa persona
         if facesMatches[bestMatchIndex]:
 
-            # get the uppercased name of the person found
-            bestMatchPersonName = namesFacesList[bestMatchIndex].upper()
+            # ricavo il nome della cartella che contiene la foto del data set
+            # che indica il nome di quella persona
+            bestMatchPersonName = namesFacesList[bestMatchIndex][0]
             print(bestMatchPersonName)
 
-            # get the coordinates of the face's location
+            # ricavo le coordinate per identificare il volto nel frame
             Y1, X2, Y2, X1 = currentFrameFaceLocation
             # Y1, X2, Y2, X1 = Y1*4, X2*4, Y2*4, X1*4
 
-            # print a bounding box through OpenCV
-            # with the coordinates defined previously
-            # color assigned is SHAK color
+            # stampa un riquadro di delimitazione tramite OpenCV
+            # sulle coordinate che indicano la posizione del volto
             cv2.rectangle(image,
                           (X1, Y1),
                           (X2, Y2),
                           (0, 67, 23),
                           2)
 
-            # print a filled rectangle underneath the bounding box
-            # that will contain the found person's name
+            # stampa un rettangolo colorato sotto il riquadro di delimitazione
+            # che conterrà il nome della persona che corrisponde al volto
             cv2.rectangle(image,
                           (X1, Y2-35),
                           (X2, Y2),
                           (0, 67, 23),
                           cv2.FILLED)
 
-            # print the name of the found person
+            print(bestMatchPersonName)
+
+            # stampa nel riquadro colorato il nome della persona con il volto presente nel frame
             cv2.putText(image,
                         bestMatchPersonName,
                         (X1+6, Y2-6),
@@ -167,18 +244,18 @@ while True:
                         (255, 255, 255),
                         2)
 
-            # mark the person attendance in the ledger written in CSV
-            # CSV -> (Comma Separated Values), how it works:
-            # - columns are separated by comma
-            # - rows are separated by new line
+            # chiamo la funzione definita in precedenza markPersonAttendance()
+            # per registrare la persona all'interno del registro CSV
+            # solo nel caso essa non sia stata già registrata
             markPersonAttendance(bestMatchPersonName)
 
-    # open a window called "webcam" which will show
-    # the current frame taken by webcam
-    cv2.imshow('Webcam', image)
+    # apre una finestra sul sistema operativo chiamata "Shakkam"
+    # che mostra il fotogramma corrente ripreso dalla webcam
+    cv2.imshow('Shakkam', image)
 
-    # waitKey(0) will display the window infinitely until any keypress (it is suitable for image display).
-    # if you use waitKey(0) you see a still image until you actually press something
-    # waitKey(1) will display a frame for 1 ms, after which display will be automatically closed
-    # if you use waitKey(1) the function will show a frame for 1 ms only
+    # waitKey(0) mostra la finestra finché viene rilevata la pressione di un qualsiasi tasto (è adatto per la visualizzazione dell'immagine)
+    # - vedi un'immagine fissa finché non premi un tasto
+
+    # waitKey(1) mostra un frame per 1 ms, dopodiché il display verrà chiuso automaticamente
+    # - la funzione mostrerà un frame solo per 1 ms
     cv2.waitKey(1)
